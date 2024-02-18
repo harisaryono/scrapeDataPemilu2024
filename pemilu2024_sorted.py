@@ -5,6 +5,9 @@ from bs4 import BeautifulSoup
 import os
 import subprocess
 import time
+import random
+from requests.adapters import HTTPAdapter
+from requests.packages.urllib3.util.retry import Retry
 
 def create_folder_structure(prop, kab, kec, desa, tps):
     folder_path = os.path.join(prop, kab, kec, desa, tps)
@@ -33,17 +36,26 @@ def download_images(urls, download_folder):
         pass
     
 def get_json_content(url):
-    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'}
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
+    }
+
+    # Configure retry mechanism
+    session = requests.Session()
+    retries = Retry(total=5, backoff_factor=1, status_forcelist=[500, 502, 503, 504])
+    session.mount('http://', HTTPAdapter(max_retries=retries))
+    session.mount('https://', HTTPAdapter(max_retries=retries))
+
     try:
         if url.endswith('.json'):
-            response = requests.get(url, headers=headers)
+            response = session.get(url, headers=headers, timeout=(3, 10))  # 3 seconds for connection timeout, 10 seconds for read timeout
             if response.status_code == 200:
                 return response.json()
             else:
                 print(f"Failed to retrieve JSON content from {url}. Status code: {response.status_code}")
                 return None
         else:
-            response = requests.get(url,headers=headers)
+            response = session.get(url, headers=headers, timeout=(3, 10))  # 3 seconds for connection timeout, 10 seconds for read timeout
             if response.status_code == 200:
                 return response.text
             else:
@@ -52,7 +64,6 @@ def get_json_content(url):
     except Exception as e:
         print(f"An error occurred: {e}")
         return None
-    
     
 def create_folder_structure(prop, kab, kec, desa, tps):
     folder_path = os.path.join(prop, kab, kec, desa, tps)
@@ -133,7 +144,8 @@ def main():
                             continue
                         
                         tps_kode = get_json_content(f'{wil_link}{prop}/{kabupaten}/{kecamatan}/{desa}.json')
-                        time.sleep(0.01)
+                        time.sleep(0.5)
+                        cursor.execute("BEGIN TRANSACTION")
                         for tps in json_sorted(tps_kode,"kode"):
                             kode_tps = tps.get("kode")
                             
@@ -145,7 +157,7 @@ def main():
                             
                             #buat folder tiap tps
                             if not is_link_in_table(cursor,link_web):
-                                cursor.execute("BEGIN TRANSACTION")
+                                
                                 #create_folder_structure(f'pemilu2024/C1/{prop}', kabupaten, kecamatan, desa, kode_tps)
                                 perolehan=data_tps.get("chart")
                                 sah1 = sah2 = sah3 = 0  # Reset variables to 0
@@ -203,14 +215,12 @@ def main():
                            # Generate the SQL query dynamically
                                 placeholders = ', '.join(['?' for _ in range(len(data))])
                                 query = f'INSERT INTO fulldata VALUES ({placeholders})' 
-                                cursor.execute(query,data)
+                                cursor.execute(query,data) 
 
-                                # Commit the transaction
-                                cursor.execute("COMMIT")
-                                #print("Transaction committed successfully")    
-
-                                #print("------------------")
-
+                                print(f"------------------{random.random()}")
+                        # Commit the transaction
+                        cursor.execute("COMMIT")
+                        #print("Transaction committed successfully")   
 
                     
                 
