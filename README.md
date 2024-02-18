@@ -2,6 +2,7 @@
  scrape data dari website kpu
  
  langkah 1. buat 1 database sqlite, beri nama pemilu2024.db
+ 
  langkah 2. selanjutnya buat table dengan copas perintah sql dibawah ini 
  
 
