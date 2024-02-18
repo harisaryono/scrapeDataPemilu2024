@@ -50,7 +50,9 @@ import subprocess
 import time
 
 langkah 5. jalankan program dengan perintah: python3 pemilu2024_sorted.py
+
 **** catatan ********
+
 dalam program ini saya tidak mendownload formulir c1, saya hanya menandai pada folder_web angka 1 bila formulir sudah bisa didownload
 
 program khusus download, akan saya buat kemudian, dengan membaca database hasil scraping tadi.
