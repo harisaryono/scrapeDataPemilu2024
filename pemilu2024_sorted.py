@@ -87,7 +87,8 @@ def json_sorted(json_data,key_sorting):
     sorted_json_data = sorted(json_data, key=lambda x: int(x[key_sorting]))
     return sorted_json_data
 def main():
-    conn = sqlite3.connect('pemilu2024/pemilu2024.db')
+    folder_db_pemilu='/home/zoom/Documents/pemilu2024/'
+    conn = sqlite3.connect(f'{folder_db_pemilu}pemilu2024.db')
     cursor = conn.cursor()
     # Get the last recorded entry
     last_record = get_last_record(cursor)
@@ -144,7 +145,7 @@ def main():
                             continue
                         
                         tps_kode = get_json_content(f'{wil_link}{prop}/{kabupaten}/{kecamatan}/{desa}.json')
-                        time.sleep(0.5)
+                        #time.sleep(0.5)
                         cursor.execute("BEGIN TRANSACTION")
                         for tps in json_sorted(tps_kode,"kode"):
                             kode_tps = tps.get("kode")
