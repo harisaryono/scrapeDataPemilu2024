@@ -58,4 +58,17 @@ dalam program ini saya tidak mendownload formulir c1, saya hanya menandai pada f
 
 program khusus download, akan saya buat kemudian, dengan membaca database hasil scraping tadi.
 
+menghitung suara sah dan jumlah tps
+select count(propid), sum(sah1),sum(sah2),sum(sah3) from fulldata;
+
+mencari ketidaksesuaian antara suara_sah, suara total (sah+tidaksah)
+select (sah1+sah2+sah3),suara_sah, suara_total,pengguna_total_j,link_web from fulldata where suara_sah>suara_total;
+
+mencari suara sah siluman. Tambahkan link_web untuk melihat linknya
+select sah1,sah2,sah3 from fulldata where sah1+sah2+sah3>306;
+
+mencari hanya suara sah berikut jumlah tps (jumlah total antara 0- max 306)
+select sum(sah1),sum(sah2),sum(sah3), count(propid) from fulldata where sah1+sah2+sah3<306 and sah1+sah2+sah3>0
+
+
 
