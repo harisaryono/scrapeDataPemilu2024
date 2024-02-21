@@ -124,21 +124,39 @@ def main():
             print(f"Province: {prop} - {prop_name}")
 
             kab_kode = get_json_content(f'{wil_link}{prop}.json')
-            for kab in json_sorted(kab_kode,"kode"):
+            #antisipasi luar negeri yang kodenya ada 99AA dsb, gunakan sorting id
+            if int(prop)==99 :
+                kabs=json_sorted(kab_kode,"id")
+            else:
+                kabs=json_sorted(kab_kode,"kode")
+
+            for kab in kabs:
                 kabupaten = kab.get("kode")
                 
                 if int(prop) == last_prop and int(kabupaten) < last_kab:
                     continue
                 
                 kec_kode = get_json_content(f'{wil_link}{prop}/{kabupaten}.json')
-                for kec in json_sorted(kec_kode,"kode"):
+
+                if int(prop)==99 :
+                    kecs=json_sorted(kec_kode,"id")
+                else:
+                    kecs=json_sorted(kec_kode,"kode")
+
+                for kec in kecs:
                     kecamatan = kec.get("kode")
                     
                     if int(prop) == last_prop and int(kabupaten) == last_kab and int(kecamatan) < last_kec:
                         continue
                         
                     desa_kode = get_json_content(f'{wil_link}{prop}/{kabupaten}/{kecamatan}.json')
-                    for ds in json_sorted(desa_kode,"kode"):
+
+                    if int(prop)==99 :
+                        dss=json_sorted(desa_kode,"id")
+                    else:
+                        dss=json_sorted(desa_kode,"kode")
+
+                    for ds in dss:
                         desa = ds.get("kode")
                         
                         if int(prop) == last_prop and int(kabupaten) == last_kab and int(kecamatan) == last_kec and int(desa) < last_desa:
@@ -147,7 +165,14 @@ def main():
                         tps_kode = get_json_content(f'{wil_link}{prop}/{kabupaten}/{kecamatan}/{desa}.json')
                         #time.sleep(0.5)
                         cursor.execute("BEGIN TRANSACTION")
-                        for tps in json_sorted(tps_kode,"kode"):
+
+
+                        if int(prop)==99 :
+                            tpss=json_sorted(tps_kode,"id")
+                        else:
+                            tpss=json_sorted(tps_kode,"kode")
+
+                        for tps in tpss:
                             kode_tps = tps.get("kode")
                             
                             if prop == last_prop and kabupaten == last_kab and kecamatan == last_kec and desa == last_desa and kode_tps < last_tps:
