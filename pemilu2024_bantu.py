@@ -1,0 +1,212 @@
+import requests
+import json
+import sqlite3
+from bs4 import BeautifulSoup
+import os
+import subprocess
+import time
+import random
+from requests.adapters import HTTPAdapter
+from requests.packages.urllib3.util.retry import Retry
+
+def create_folder_structure(prop, kab, kec, desa, tps):
+    folder_path = os.path.join(prop, kab, kec, desa, tps)
+    os.makedirs(folder_path, exist_ok=True)
+
+def download_images(urls, download_folder):
+    try:
+        if not os.path.exists(download_folder):
+            # Extract prop, kab, kec, desa, and tps from download_folder
+            folder_parts = download_folder.split(os.path.sep)
+            if len(folder_parts) >= 5:
+                prop, kab, kec, desa, tps = folder_parts[:5]
+                create_folder_structure(prop, kab, kec, desa, tps)
+
+        for url in urls:
+            if url is None:
+                continue  # Skip None URLs
+            image_name = os.path.basename(url)
+            image_path = os.path.join(download_folder, image_name)
+            if os.path.exists(image_path):
+                print(f"Image {image_name} already exists. Skipping...")
+                continue  # Skip downloading if the image already exists
+            subprocess.run(['aria2c', '-d', download_folder, url])
+    except Exception as e:
+        print(f"An error occurred while downloading images: {e}")
+        pass
+    
+def get_json_content(url):
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
+    }
+
+    # Configure retry mechanism
+    session = requests.Session()
+    retries = Retry(total=5, backoff_factor=1, status_forcelist=[500, 502, 503, 504])
+    session.mount('http://', HTTPAdapter(max_retries=retries))
+    session.mount('https://', HTTPAdapter(max_retries=retries))
+
+    try:
+        if url.endswith('.json'):
+            response = session.get(url, headers=headers, timeout=(3, 10))  # 3 seconds for connection timeout, 10 seconds for read timeout
+            if response.status_code == 200:
+                return response.json()
+            else:
+                print(f"Failed to retrieve JSON content from {url}. Status code: {response.status_code}")
+                return None
+        else:
+            response = session.get(url, headers=headers, timeout=(3, 10))  # 3 seconds for connection timeout, 10 seconds for read timeout
+            if response.status_code == 200:
+                return response.text
+            else:
+                print(f"Failed to retrieve HTML content from {url}. Status code: {response.status_code}")
+                return None
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return None
+    
+def create_folder_structure(prop, kab, kec, desa, tps):
+    folder_path = os.path.join(prop, kab, kec, desa, tps)
+    os.makedirs(folder_path, exist_ok=True)
+    
+def is_link_in_table(cur,link_web):
+    cur.execute("SELECT * FROM fulldata WHERE link_web = ?", (link_web,))
+    row = cur.fetchone()
+    if row:
+        return True  # Link found in the table
+    else:
+        return False  # Link not found in the table
+    
+def get_last_record(cursor):
+    qry='SELECT * FROM bantu ORDER BY id_auto DESC LIMIT 1;'
+    cursor.execute(qry)
+    return cursor.fetchone()
+
+def json_sorted(json_data,key_sorting):
+    # Sort the JSON data based on the "id" key (converted to int)
+    sorted_json_data = sorted(json_data, key=lambda x: int(x[key_sorting]))
+    return sorted_json_data
+
+def main():
+    folder_db_pemilu='/media/harry/DATA125/pemilu2024/'#'/home/zoom/Documents/pemilu2024/'
+    conn = sqlite3.connect(f'{folder_db_pemilu}pemilu2024.db')
+    cursor = conn.cursor()
+
+    # Get the last recorded entry
+    """last_record = get_last_record(cursor)
+
+    if last_record is None:
+        last_prop=last_kab=last_kec=last_desa=last_tps=0
+    else:
+        
+        last_prop = int(last_record[0])
+        last_kab = int(last_record[1])
+        last_kec = int(last_record[2])
+        last_desa = int(last_record[3])
+        last_tps = int(last_record[4])
+"""
+    
+    # URLs
+    wil_link = 'https://sirekap-obj-data.kpu.go.id/wilayah/pemilu/ppwp/'
+    data_link = 'https://sirekap-obj-data.kpu.go.id/pemilu/hhcw/ppwp/'
+    target_folder='/media/harry/DATA125/pemilu2024/'
+
+    # Fetching JSON content
+    url = 'https://sirekap-obj-data.kpu.go.id/wilayah/pemilu/ppwp/0.json'
+    
+    data=[]
+    qry="insert into bantu (nama,kode,id,tingkat) values (?,?,?,?)"
+    
+    json_content = get_json_content(url)
+    
+    if json_content:
+        print("Iterating over provinces:")
+        for js in json_sorted(json_content,"kode"):
+            prop = js.get("kode")
+            prop_name = js.get("nama")
+            prop_id=js.get("id")
+            prop_tingkat=js.get("tingkat")
+            data_propinsi=(prop_name,prop,prop_id,prop_tingkat)
+            data.append(data_propinsi)
+            
+            print(f"Province: {prop} - {prop_name}")
+
+            kab_kode = get_json_content(f'{wil_link}{prop}.json')
+            #antisipasi luar negeri yang kodenya ada 99AA dsb, gunakan sorting id
+            if int(prop)==99 :
+                kabs=json_sorted(kab_kode,"id")
+            else:
+                kabs=json_sorted(kab_kode,"kode")
+
+            for kab in kabs:
+                
+                kabupaten = kab.get("kode")
+                kab_id=kab.get("id")
+                kab_nama=kab.get("nama")
+                kab_tingkat=kab.get("tingkat")
+                data_kab=(kab_nama,kabupaten,kab_id,kab_tingkat)
+                data.append(data_kab)
+                
+                kec_kode = get_json_content(f'{wil_link}{prop}/{kabupaten}.json')
+
+                if int(prop)==99 :
+                    kecs=json_sorted(kec_kode,"id")
+                else:
+                    kecs=json_sorted(kec_kode,"kode")
+
+                for kec in kecs:
+                    kecamatan = kec.get("kode")
+                    kec_id=kec.get("id")
+                    kec_nama=kec.get("nama")
+                    kec_tingkat=kec.get("tingkat")
+                    data_kec=(kec_nama,kecamatan,kec_id,kec_tingkat)
+                    data.append(data_kec)
+                    
+                    desa_kode = get_json_content(f'{wil_link}{prop}/{kabupaten}/{kecamatan}.json')
+
+                    if int(prop)==99 :
+                        dss=json_sorted(desa_kode,"id")
+                    else:
+                        dss=json_sorted(desa_kode,"kode")
+
+                    #cursor.execute("BEGIN TRANSACTION")
+
+                    for ds in dss:
+                        
+                        desa = ds.get("kode")
+                        desa_id=ds.get("id")
+                        desa_nama=ds.get("nama")
+                        desa_tingkat=ds.get("tingkat")
+                        data_desa=(desa_nama,desa,desa_id,desa_tingkat)
+                        data.append(data_desa)
+                        print(f'ds {desa_nama} kec {kec_nama} kab {kab_nama} propinsi {prop_name}')
+
+                        tps_kode = get_json_content(f'{wil_link}{prop}/{kabupaten}/{kecamatan}/{desa}.json')
+                        #time.sleep(0.5)
+                        cursor.execute("BEGIN TRANSACTION")
+
+
+                        if int(prop)==99 :
+                            tpss=json_sorted(tps_kode,"id")
+                        else:
+                            tpss=json_sorted(tps_kode,"kode")
+
+                        for tps in tpss:
+                            kode_tps = tps.get("kode")
+                            tps_nama=tps.get("nama")
+                            tps_id=tps.get('id')
+                            tps_tingkat=tps.get("tingkat")
+                            tps_data=(tps_nama,kode_tps,tps_id,tps_tingkat)
+                            data.append(tps_data)
+                            cursor.executemany(qry,data)
+                            data=[]
+
+
+                        cursor.execute('COMMIT')
+
+                    
+    conn.commit()            
+    conn.close()
+        
+if __name__ == "__main__":
+    main()
