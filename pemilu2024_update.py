@@ -1,3 +1,29 @@
+''' 
+after you finish download
+alter your table to add id column with autoincrement
+and ts to save timestamp
+1. 
+-- Create a temporary table with the auto-incrementing ID column
+CREATE TABLE TempTable AS
+SELECT rowid as id, *
+FROM fulldata;
+
+-- Drop the original fulldata table
+DROP TABLE fulldata;
+
+-- Rename the temporary table to fulldata
+ALTER TABLE TempTable RENAME TO fulldata;
+
+
+2.
+-- Add a timestamp column named 'timestamp_column'
+ALTER TABLE fulldata
+ADD COLUMN ts TIMESTAMP;
+
+
+'''
+
+
 import requests
 import json
 import sqlite3
