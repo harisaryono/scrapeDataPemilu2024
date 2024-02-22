@@ -92,19 +92,129 @@ def get_folder_link(cursor):
     cursor.execute(qry)
     return cursor.fetchall()
 
+
 def main():
-    folder_db_pemilu='/home/zoom/Documents/pemilu2024/'
+    folder_db_pemilu='/media/zoom/DATA125/pemilu2024/'
     conn = sqlite3.connect(f'{folder_db_pemilu}pemilu2024.db')
     cursor = conn.cursor()
 
      # URLs
     wil_link = 'https://sirekap-obj-data.kpu.go.id/wilayah/pemilu/ppwp/'
     data_link = 'https://sirekap-obj-data.kpu.go.id/pemilu/hhcw/ppwp/'
-    target_folder='/media/harry/DATA125/pemilu2024/'
+    target_folder='/media/zoom/DATA125/pemilu2024/'
 
     # Fetching JSON content
     url = 'https://sirekap-obj-data.kpu.go.id/wilayah/pemilu/ppwp/0.json'
-    json_content = get_json_content(url)
+    
+    #data yang sudah ada form c1 nya, tapi belum didownload 
+    qry='select * from fulldata where link_folder=1 and(img1 or img2 or img3) is NULL'
+    targetData=cursor.execute(qry).fetchall()
+    
+    #update data sekalian simpan link gambarnya, belum akan download gambar dulu
+
+    count=1
+    counter=1
+    panjData=len(targetData)
+
+    cursor.execute('BEGIN TRANSACTION')
+
+    for td in targetData:
+        id=td[0]
+        propid=td[1]
+        kabid=td[2]
+        kecid=td[3]
+        desid=td[4]
+        tpsid=td[5]
+   
+
+        data_tps = get_json_content(f'{data_link}{propid}/{kabid}/{kecid}/{desid}/{tpsid}.json')
+        images=data_tps.get("images")
+        
+        if (images[0] or images[1] or images[2]) is not None:
+            #folder=f'{target_folder}/C1/{prop}/{kabupaten}/{kecamatan}/{desa}/{kode_tps}'
+            #download_images(images,folder)
+            img1=images[0]
+            img2=images[1]
+            img3=images[2]
+
+
+            perolehan=data_tps.get("chart")
+            sah1 = sah2 = sah3 = 0  # Reset variables to 0
+            if perolehan is not None:
+                sah1=perolehan.get("100025")
+                sah2=perolehan.get("100026")
+                sah3=perolehan.get("100027")
+                                   
+            data_adm=data_tps.get("administrasi")
+            suara_sah = suara_total = pemilih_dpt_j = pemilih_dpt_l = pemilih_dpt_p = 0  # Reset variables to 0
+            pengguna_dpt_j = pengguna_dpt_l = pengguna_dpt_p = pengguna_dptb_j = pengguna_dptb_l = pengguna_dptb_p = 0  # Reset variables to 0
+            suara_tidak_sah = pengguna_total_j = pengguna_total_l = pengguna_total_p = 0  # Reset variables to 0
+            pengguna_non_dpt_j = pengguna_non_dpt_l = pengguna_non_dpt_p = 0  # Reset variables to 0
+            if data_adm is not None:
+                suara_sah=data_adm.get("suara_sah")
+                suara_total=data_adm.get("suara_total")
+                pemilih_dpt_j=data_adm.get("pemilih_dpt_j")
+                pemilih_dpt_l=data_adm.get('pemilih_dpt_l')
+                pemilih_dpt_p=data_adm.get('pemilih_dpt_p')
+                pengguna_dpt_j=data_adm.get('pengguna_dpt_j')
+                pengguna_dpt_l=data_adm.get('pengguna_dpt_l')
+                pengguna_dpt_p=data_adm.get('pengguna_dpt_p')
+                pengguna_dptb_j=data_adm.get('pengguna_dptb_j')
+                pengguna_dptb_l=data_adm.get('pengguna_dptb_l')
+                pengguna_dptb_p=data_adm.get('pengguna_dptb_p')
+                suara_tidak_sah=data_adm.get('suara_tidak_sah')
+                pengguna_total_j=data_adm.get('pengguna_total_j')
+                pengguna_total_l=data_adm.get('pengguna_total_l')
+                pengguna_total_p=data_adm.get('pengguna_total_p')
+                pengguna_non_dpt_j=data_adm.get('pengguna_non_dpt_j')
+                pengguna_non_dpt_l=data_adm.get('pengguna_non_dpt_l')
+                pengguna_non_dpt_p=data_adm.get('pengguna_non_dpt_p')
+
+            ts=data_tps.get('ts')
+            
+            # Update the row in the database
+            qry = """
+            UPDATE fulldata 
+            SET sah1=?, sah2=?, sah3=?, 
+                suara_sah=?, suara_total=?, 
+                pemilih_dpt_j=?, pemilih_dpt_l=?, pemilih_dpt_p=?, 
+                pengguna_dpt_j=?, pengguna_dpt_l=?, pengguna_dpt_p=?, 
+                pengguna_dptb_j=?, pengguna_dptb_l=?, pengguna_dptb_p=?, 
+                suara_tidak_sah=?, 
+                pengguna_total_j=?, pengguna_total_l=?, pengguna_total_p=?, 
+                pengguna_non_dpt_j=?, pengguna_non_dpt_l=?, pengguna_non_dpt_p=?, 
+                ts=?,img1=?,img2=?,img3=?
+            WHERE id=?
+            """
+            data = (sah1, sah2, sah3, 
+                        suara_sah, suara_total, 
+                        pemilih_dpt_j, pemilih_dpt_l, pemilih_dpt_p, 
+                        pengguna_dpt_j, pengguna_dpt_l, pengguna_dpt_p, 
+                        pengguna_dptb_j, pengguna_dptb_l, pengguna_dptb_p, 
+                        suara_tidak_sah, 
+                        pengguna_total_j, pengguna_total_l, pengguna_total_p, 
+                        pengguna_non_dpt_j, pengguna_non_dpt_l, pengguna_non_dpt_p, 
+                        ts,img1,img2,img3,
+                        id)
+        
+            cursor.execute(qry, data)
+            #print(data)
+            print(f'{counter}/{panjData}\tid : {id} updated..')
+            count+=1
+            counter+=1
+            if count == 50:
+                cursor.execute("COMMIT")
+                cursor.execute("BEGIN TRANSACTION")
+                count = 0  # Reset counter
+        
+
+
+
+
+
+
+
+    '''
     
     if json_content:
         print("Iterating over provinces:")
@@ -116,13 +226,7 @@ def main():
 
             print(f"Province: {prop} - {prop_name}")
 
-
-            
-
-
-
     
-    '''
     # Get the last recorded entry
     last_record = get_last_record(cursor)
 
