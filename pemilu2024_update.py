@@ -74,7 +74,7 @@ def get_data_siluman(cursor):
 def main():
 
     data_link = 'https://sirekap-obj-data.kpu.go.id/pemilu/hhcw/ppwp/'
-    folder_db_pemilu='/home/zoom/Documents/pemilu2024/'
+    folder_db_pemilu='/media/zoom/DATA125/pemilu2024/'
     conn = sqlite3.connect(f'{folder_db_pemilu}pemilu2024.db')
     cursor = conn.cursor()
     
